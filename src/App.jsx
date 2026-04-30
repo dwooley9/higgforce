@@ -864,25 +864,46 @@ export default function CRM() {
       {/* Mobile bottom tab bar */}
       <nav className="mobile-tabbar">
         <button className={view==='dashboard' ? 'active' : ''} onClick={() => setView('dashboard')}>
-          <LayoutDashboard size={20} strokeWidth={1.75}/>
+          <LayoutDashboard size={18} strokeWidth={1.75}/>
           <span>Home</span>
         </button>
+        <button className={view==='won' ? 'active' : ''} onClick={() => setView('won')}>
+          <Trophy size={18} strokeWidth={1.75}/>
+          <span>Book</span>
+          {wonAccounts.length > 0 && (
+            <span className="badge">{wonAccounts.length}</span>
+          )}
+        </button>
+        <button className={view==='renewals' ? 'active' : ''} onClick={() => setView('renewals')}>
+          <Calendar size={18} strokeWidth={1.75}/>
+          <span>Renewals</span>
+          {renewalAccounts.length > 0 && (
+            <span className="badge">{renewalAccounts.length}</span>
+          )}
+        </button>
         <button className={view==='prospects' ? 'active' : ''} onClick={() => setView('prospects')}>
-          <Users size={20} strokeWidth={1.75}/>
-          <span>Prospecting</span>
+          <Users size={18} strokeWidth={1.75}/>
+          <span>Prospects</span>
+        </button>
+        <button className={view==='lost' ? 'active' : ''} onClick={() => setView('lost')}>
+          <XCircle size={18} strokeWidth={1.75}/>
+          <span>Lost</span>
+          {lostAccounts.length > 0 && (
+            <span className="badge">{lostAccounts.length}</span>
+          )}
         </button>
         <button className={view==='calls' ? 'active' : ''} onClick={() => setView('calls')}>
-          <Phone size={20} strokeWidth={1.75}/>
+          <Phone size={18} strokeWidth={1.75}/>
           <span>Calls</span>
           {calls.filter(c=>!c.loggedToSF).length > 0 && (
             <span className="badge">{calls.filter(c=>!c.loggedToSF).length}</span>
           )}
         </button>
-        <button className={view==='renewals' ? 'active' : ''} onClick={() => setView('renewals')}>
-          <Calendar size={20} strokeWidth={1.75}/>
-          <span>Renewals</span>
-          {renewalAccounts.length > 0 && (
-            <span className="badge">{renewalAccounts.length}</span>
+        <button className={view==='todo' ? 'active' : ''} onClick={() => setView('todo')}>
+          <CheckSquare size={18} strokeWidth={1.75}/>
+          <span>To-Do</span>
+          {reminders.filter(r=>!r.done).length > 0 && (
+            <span className="badge">{reminders.filter(r=>!r.done).length}</span>
           )}
         </button>
       </nav>
@@ -4439,11 +4460,11 @@ const globalCss = `
     }
     .mobile-tabbar button {
       flex: 1;
-      display: flex; flex-direction: column; align-items: center; gap: 3px;
+      display: flex; flex-direction: column; align-items: center; gap: 2px;
       background: transparent; border: none;
-      color: #64748b; font-size: 10px; font-weight: 600;
-      padding: 6px 4px; border-radius: 6px;
-      text-transform: uppercase; letter-spacing: 0.5px;
+      color: #64748b; font-size: 8.5px; font-weight: 600;
+      padding: 5px 2px; border-radius: 6px;
+      text-transform: uppercase; letter-spacing: 0.3px;
     }
     .mobile-tabbar button.active { color: #5BC4D8; }
     .mobile-tabbar .badge {
