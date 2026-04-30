@@ -676,16 +676,6 @@ export default function CRM() {
           </div>
         </div>
 
-        <button
-          onClick={() => { window.location.href = 'https://dwooley9.github.io'; }}
-          style={{ display:'flex', alignItems:'center', gap:6, padding:'6px 16px', background:'transparent', border:'none', color:'rgba(255,255,255,0.3)', fontSize:11, cursor:'pointer', width:'100%', textAlign:'left', borderBottom:'1px solid rgba(255,255,255,0.06)', marginBottom:4 }}
-          onMouseEnter={e => e.currentTarget.style.color='rgba(255,255,255,0.7)'}
-          onMouseLeave={e => e.currentTarget.style.color='rgba(255,255,255,0.3)'}
-        >
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M8 2L4 6l4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-          Home
-        </button>
-
         <nav style={styles.nav}>
           <NavBtn icon={LayoutDashboard} label="Dashboard" active={view==='dashboard'} onClick={()=>setView('dashboard')} />
           <NavBtn icon={Trophy} label="Book of Business" active={view==='won'} onClick={()=>setView('won')} count={wonAccounts.length} />
