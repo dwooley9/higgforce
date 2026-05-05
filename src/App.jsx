@@ -645,6 +645,21 @@ export default function CRM() {
     .filter(x => x !== null && x.days >= -7 && x.days <= 90)
     .sort((a, b) => a.days - b.days);
 
+  // To-Do bubble count: open tasks that are overdue, undated, or due within the next 30 days
+  const todoBubbleCount = (() => {
+    const todayDate = new Date();
+    todayDate.setHours(0, 0, 0, 0);
+    const thirtyDaysOut = new Date(todayDate);
+    thirtyDaysOut.setDate(thirtyDaysOut.getDate() + 30);
+    return reminders.filter(r => {
+      if (r.done) return false;
+      if (!r.due) return true;
+      const dueDate = new Date(r.due);
+      dueDate.setHours(0, 0, 0, 0);
+      return dueDate <= thirtyDaysOut;
+    }).length;
+  })();
+
   if (!loaded) {
     return <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100vh',fontFamily:'Georgia, serif',color:'#475569'}}>Loading…</div>;
   }
@@ -685,7 +700,7 @@ export default function CRM() {
           <NavBtn icon={XCircle} label="Lost Accounts" active={view==='lost'} onClick={()=>setView('lost')} count={lostAccounts.length} />
           <div style={{height:1, background:'rgba(255,255,255,0.08)', margin:'8px 0'}}/>
           <NavBtn icon={Phone} label="Calls Report" active={view==='calls'} onClick={()=>setView('calls')} count={calls.filter(c=>!c.loggedToSF).length} highlight />
-          <NavBtn icon={CheckSquare} label="To-Do List" active={view==='todo'} onClick={()=>setView('todo')} count={reminders.filter(r=>!r.done).length} highlight />
+          <NavBtn icon={CheckSquare} label="To-Do List" active={view==='todo'} onClick={()=>setView('todo')} count={todoBubbleCount} highlight />
         </nav>
 
         <div style={styles.sidebarFooter}>
@@ -902,8 +917,8 @@ export default function CRM() {
         <button className={view==='todo' ? 'active' : ''} onClick={() => setView('todo')}>
           <CheckSquare size={18} strokeWidth={1.75}/>
           <span>To-Do</span>
-          {reminders.filter(r=>!r.done).length > 0 && (
-            <span className="badge">{reminders.filter(r=>!r.done).length}</span>
+          {todoBubbleCount > 0 && (
+            <span className="badge">{todoBubbleCount}</span>
           )}
         </button>
       </nav>
