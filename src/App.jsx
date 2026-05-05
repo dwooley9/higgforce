@@ -685,7 +685,7 @@ export default function CRM() {
           <NavBtn icon={XCircle} label="Lost Accounts" active={view==='lost'} onClick={()=>setView('lost')} count={lostAccounts.length} />
           <div style={{height:1, background:'rgba(255,255,255,0.08)', margin:'8px 0'}}/>
           <NavBtn icon={Phone} label="Calls Report" active={view==='calls'} onClick={()=>setView('calls')} count={calls.filter(c=>!c.loggedToSF).length} highlight />
-          <NavBtn icon={CheckSquare} label="To-Do List" active={view==='todo'} onClick={()=>setView('todo')} count={reminders.filter(r=>!r.done).length} />
+          <NavBtn icon={CheckSquare} label="To-Do List" active={view==='todo'} onClick={()=>setView('todo')} count={reminders.filter(r=>!r.done).length} highlight />
         </nav>
 
         <div style={styles.sidebarFooter}>
