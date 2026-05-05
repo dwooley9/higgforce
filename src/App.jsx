@@ -645,18 +645,18 @@ export default function CRM() {
     .filter(x => x !== null && x.days >= -7 && x.days <= 90)
     .sort((a, b) => a.days - b.days);
 
-  // To-Do bubble count: open tasks that are overdue, undated, or due within the next 30 days
+  // To-Do bubble count: open tasks that are overdue, undated, or due within the next 2 days
   const todoBubbleCount = (() => {
     const todayDate = new Date();
     todayDate.setHours(0, 0, 0, 0);
-    const thirtyDaysOut = new Date(todayDate);
-    thirtyDaysOut.setDate(thirtyDaysOut.getDate() + 30);
+    const twoDaysOut = new Date(todayDate);
+    twoDaysOut.setDate(twoDaysOut.getDate() + 2);
     return reminders.filter(r => {
       if (r.done) return false;
       if (!r.due) return true;
       const dueDate = new Date(r.due);
       dueDate.setHours(0, 0, 0, 0);
-      return dueDate <= thirtyDaysOut;
+      return dueDate <= twoDaysOut;
     }).length;
   })();
 
