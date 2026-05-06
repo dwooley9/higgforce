@@ -1137,7 +1137,7 @@ function Dashboard({ accounts, allAccounts, reminders, prospectingTasks = [], cl
         {dueReminders.length === 0 ? (
           <div style={{...styles.empty, padding:'20px'}}>No open tasks. Add one above or set reminders from an account's drawer.</div>
         ) : (
-          <div style={styles.remindersList}>
+          <div style={{...styles.remindersList, maxHeight:220, overflowY:'auto', paddingRight:4}}>
             {dueReminders.map(r => (
               <div key={`${r._source}-${r.id}`} style={styles.reminder}>
                 <button onClick={() => handleToggle(r)} style={styles.checkbox}><div style={styles.checkboxInner}/></button>
