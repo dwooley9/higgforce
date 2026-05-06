@@ -645,19 +645,20 @@ export default function CRM() {
     .filter(x => x !== null && x.days >= -7 && x.days <= 90)
     .sort((a, b) => a.days - b.days);
 
-  // To-Do bubble count: open tasks that are overdue, undated, or due within the next 2 days
+  // To-Do bubble count: open tasks (reminders + prospecting) that are overdue, undated, or due within the next 2 days
   const todoBubbleCount = (() => {
     const todayDate = new Date();
     todayDate.setHours(0, 0, 0, 0);
     const twoDaysOut = new Date(todayDate);
     twoDaysOut.setDate(twoDaysOut.getDate() + 2);
-    return reminders.filter(r => {
-      if (r.done) return false;
-      if (!r.due) return true;
-      const dueDate = new Date(r.due);
+    const matches = (t) => {
+      if (t.done) return false;
+      if (!t.due) return true;
+      const dueDate = new Date(t.due);
       dueDate.setHours(0, 0, 0, 0);
       return dueDate <= twoDaysOut;
-    }).length;
+    };
+    return reminders.filter(matches).length + prospectingTasks.filter(matches).length;
   })();
 
   if (!loaded) {
@@ -744,6 +745,7 @@ export default function CRM() {
             accounts={dashboardAccounts}
             allAccounts={accounts}
             reminders={reminders}
+            prospectingTasks={prospectingTasks}
             clientWork={clientWork}
             onSelect={setSelected}
             onNew={() => setShowNew(true)}
@@ -751,6 +753,8 @@ export default function CRM() {
             onAddReminder={addReminder}
             onToggleReminder={toggleReminder}
             onDeleteReminder={deleteReminder}
+            onToggleProspectingTask={toggleProspectingTask}
+            onDeleteProspectingTask={deleteProspectingTask}
             onAddClientWork={addClientWork}
             onUpdateClientWork={updateClientWork}
             onDeleteClientWork={deleteClientWork}
@@ -789,9 +793,12 @@ export default function CRM() {
         {view === 'todo' && (
           <TodoPage
             reminders={reminders}
+            prospectingTasks={prospectingTasks}
             onAdd={addReminder}
             onToggle={toggleReminder}
             onDelete={deleteReminder}
+            onToggleProspectingTask={toggleProspectingTask}
+            onDeleteProspectingTask={deleteProspectingTask}
           />
         )}
 
@@ -1008,16 +1015,21 @@ function NavBtn({ icon: Icon, label, active, onClick, count, highlight }) {
 }
 
 /* ========== DASHBOARD (KANBAN PIPELINE) ========== */
-function Dashboard({ accounts, allAccounts, reminders, clientWork, onSelect, onNew, onImport, onAddReminder, onToggleReminder, onDeleteReminder, onAddClientWork, onUpdateClientWork, onDeleteClientWork, onAssistantAction, onUpdateStage, onMarkRenewal }) {
+function Dashboard({ accounts, allAccounts, reminders, prospectingTasks = [], clientWork, onSelect, onNew, onImport, onAddReminder, onToggleReminder, onDeleteReminder, onToggleProspectingTask, onDeleteProspectingTask, onAddClientWork, onUpdateClientWork, onDeleteClientWork, onAssistantAction, onUpdateStage, onMarkRenewal }) {
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
-  
-  // Filter reminders: show overdue, undated, today, and anything due within the next 30 days
+
+  // Filter open tasks (reminders + prospecting): show undated and anything due within the next 30 days
   const todayDate = new Date();
   todayDate.setHours(0, 0, 0, 0);
   const thirtyDaysOut = new Date(todayDate);
   thirtyDaysOut.setDate(thirtyDaysOut.getDate() + 30);
-  
-  const dueReminders = reminders
+
+  const allOpenTasks = [
+    ...reminders.map(r => ({ ...r, _source: 'reminder' })),
+    ...prospectingTasks.map(t => ({ ...t, _source: 'prospecting' })),
+  ];
+
+  const dueReminders = allOpenTasks
     .filter(r => {
       if (r.done) return false;
       if (!r.due) return true; // undated always show
@@ -1040,6 +1052,9 @@ function Dashboard({ accounts, allAccounts, reminders, clientWork, onSelect, onN
       if (ba === 0) return new Date(a.due) - new Date(b.due);
       return 0;
     });
+
+  const handleToggle = (r) => r._source === 'prospecting' ? onToggleProspectingTask(r.id) : onToggleReminder(r.id);
+  const handleDelete = (r) => r._source === 'prospecting' ? onDeleteProspectingTask(r.id) : onDeleteReminder(r.id);
   
   const [todoText, setTodoText] = useState('');
   const [todoDue, setTodoDue] = useState('');
@@ -1124,13 +1139,13 @@ function Dashboard({ accounts, allAccounts, reminders, clientWork, onSelect, onN
         ) : (
           <div style={styles.remindersList}>
             {dueReminders.map(r => (
-              <div key={r.id} style={styles.reminder}>
-                <button onClick={() => onToggleReminder(r.id)} style={styles.checkbox}><div style={styles.checkboxInner}/></button>
+              <div key={`${r._source}-${r.id}`} style={styles.reminder}>
+                <button onClick={() => handleToggle(r)} style={styles.checkbox}><div style={styles.checkboxInner}/></button>
                 <div style={{flex:1}}>
                   <div style={{fontWeight:500,color:'#0f172a'}}>{r.text}</div>
                   {(r.company || r.due) && <div style={{fontSize:12,color:'#64748b',marginTop:2}}>{r.company}{r.company && r.due && ' · '}{r.due && `due ${r.due}`}</div>}
                 </div>
-                <button onClick={() => onDeleteReminder(r.id)} style={styles.iconBtn}><X size={14}/></button>
+                <button onClick={() => handleDelete(r)} style={styles.iconBtn}><X size={14}/></button>
               </div>
             ))}
           </div>
@@ -1544,6 +1559,7 @@ function AccountsPage({ accounts, industryFilter, setIndustryFilter, search, set
   const [stageFilter, setStageFilter] = useState('All');
   const [addingTaskFor, setAddingTaskFor] = useState(null);
   const [newTaskText, setNewTaskText] = useState('');
+  const [newTaskDue, setNewTaskDue] = useState('');
 
   const filtered = accounts.filter(p => {
     const indMatch = industryFilter === 'All' || p.industry === industryFilter;
@@ -1578,10 +1594,12 @@ function AccountsPage({ accounts, industryFilter, setIndustryFilter, search, set
     const account = accounts.find(a => a.id === accountId);
     onAddProspectingTask({
       text: newTaskText.trim(),
+      due: newTaskDue,
       company: account.company,
       accountId: accountId
     });
     setNewTaskText('');
+    setNewTaskDue('');
     setAddingTaskFor(null);
   };
 
@@ -1619,17 +1637,21 @@ function AccountsPage({ accounts, industryFilter, setIndustryFilter, search, set
             <div style={{display:'flex', flexDirection:'column', maxHeight: '280px', overflowY: 'auto'}}>
               {openTasks.map(task => (
                 <div key={task.id} style={{padding:'12px 16px', borderBottom:'1px solid #f1f5f9', display:'flex', alignItems:'center', gap:12}}>
-                  <input 
-                    type="checkbox" 
+                  <input
+                    type="checkbox"
                     checked={task.done}
                     onChange={() => onToggleProspectingTask(task.id)}
                     style={{width:16, height:16, cursor:'pointer'}}
                   />
                   <div style={{flex:1, minWidth:0}}>
                     <div style={{fontSize:13, fontWeight:600, color:'#0f172a'}}>{task.text}</div>
-                    <div style={{fontSize:11, color:'#64748b', marginTop:2}}>{task.company}</div>
+                    <div style={{fontSize:11, color:'#64748b', marginTop:2}}>
+                      {task.company}
+                      {task.company && task.due && ' · '}
+                      {task.due && `due ${task.due}`}
+                    </div>
                   </div>
-                  <button 
+                  <button
                     onClick={() => onDeleteProspectingTask(task.id)}
                     style={{...styles.iconBtn, padding:4, color:'#94a3b8'}}
                     title="Delete"
@@ -1683,20 +1705,27 @@ function AccountsPage({ accounts, industryFilter, setIndustryFilter, search, set
               {addingTaskFor === p.id ? (
                 <>
                   <AccountCard account={p} onClick={() => onSelect(p.id)} />
-                  <div style={{marginTop:8, padding:10, background:'#fff', border:'2px solid '+BRAND.teal, borderRadius:8, display:'flex', gap:8}}>
+                  <div style={{marginTop:8, padding:10, background:'#fff', border:'2px solid '+BRAND.teal, borderRadius:8, display:'flex', gap:8, flexWrap:'wrap'}}>
                     <input
                       autoFocus
                       value={newTaskText}
                       onChange={e => setNewTaskText(e.target.value)}
-                      onKeyDown={e => { 
+                      onKeyDown={e => {
                         if (e.key === 'Enter') { e.preventDefault(); handleAddTask(p.id); }
-                        if (e.key === 'Escape') setAddingTaskFor(null);
+                        if (e.key === 'Escape') { setAddingTaskFor(null); setNewTaskText(''); setNewTaskDue(''); }
                       }}
                       placeholder="e.g., 1st attempt call, Send intro email..."
-                      style={{...styles.input, padding:'6px 10px', fontSize:12, flex:1}}
+                      style={{...styles.input, padding:'6px 10px', fontSize:12, flex:'1 1 240px'}}
+                    />
+                    <input
+                      type="date"
+                      value={newTaskDue}
+                      onChange={e => setNewTaskDue(e.target.value)}
+                      style={{...styles.input, padding:'6px 10px', fontSize:12, flex:'0 0 150px'}}
+                      title="Due date (optional)"
                     />
                     <button onClick={() => handleAddTask(p.id)} style={{...styles.btnPrimary, padding:'6px 12px', fontSize:11}}>Add</button>
-                    <button onClick={() => setAddingTaskFor(null)} style={{...styles.btnSecondary, padding:'6px 12px', fontSize:11}}>Cancel</button>
+                    <button onClick={() => { setAddingTaskFor(null); setNewTaskText(''); setNewTaskDue(''); }} style={{...styles.btnSecondary, padding:'6px 12px', fontSize:11}}>Cancel</button>
                   </div>
                 </>
               ) : (
@@ -3109,7 +3138,7 @@ Behavior:
 
 /* ========== CALLS REPORT ========== */
 /* ========== TO-DO LIST PAGE ========== */
-function TodoPage({ reminders, onAdd, onToggle, onDelete }) {
+function TodoPage({ reminders, prospectingTasks = [], onAdd, onToggle, onDelete, onToggleProspectingTask, onDeleteProspectingTask }) {
   const [text, setText] = useState('');
   const [due, setDue] = useState('');
   const [search, setSearch] = useState('');
@@ -3124,7 +3153,15 @@ function TodoPage({ reminders, onAdd, onToggle, onDelete }) {
     return d < today ? 'overdue' : 'upcoming';
   };
 
-  const allSorted = [...reminders]
+  const mergedTasks = [
+    ...reminders.map(r => ({ ...r, _source: 'reminder' })),
+    ...prospectingTasks.map(t => ({ ...t, _source: 'prospecting' })),
+  ];
+
+  const handleToggle = (r) => r._source === 'prospecting' ? onToggleProspectingTask(r.id) : onToggle(r.id);
+  const handleDelete = (r) => r._source === 'prospecting' ? onDeleteProspectingTask(r.id) : onDelete(r.id);
+
+  const allSorted = mergedTasks
     .filter(r => {
       const q = search.toLowerCase();
       if (q && !r.text.toLowerCase().includes(q) && !(r.company || '').toLowerCase().includes(q)) return false;
@@ -3143,10 +3180,10 @@ function TodoPage({ reminders, onAdd, onToggle, onDelete }) {
       return 0;
     });
 
-  const openCount = reminders.filter(r => !r.done).length;
-  const overdueCount = reminders.filter(r => !r.done && r.due && (() => { const d = new Date(r.due); d.setHours(0,0,0,0); return d < today; })()).length;
-  const undatedCount = reminders.filter(r => !r.done && !r.due).length;
-  const doneCount = reminders.filter(r => r.done).length;
+  const openCount = mergedTasks.filter(r => !r.done).length;
+  const overdueCount = mergedTasks.filter(r => !r.done && r.due && (() => { const d = new Date(r.due); d.setHours(0,0,0,0); return d < today; })()).length;
+  const undatedCount = mergedTasks.filter(r => !r.done && !r.due).length;
+  const doneCount = mergedTasks.filter(r => r.done).length;
 
   const addTask = () => {
     const v = text.trim();
@@ -3260,7 +3297,7 @@ function TodoPage({ reminders, onAdd, onToggle, onDelete }) {
             const dl = dayLabel(r);
 
             return (
-              <React.Fragment key={r.id}>
+              <React.Fragment key={`${r._source}-${r.id}`}>
                 {showHeader && (
                   <div style={{
                     fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:1.2,
@@ -3289,7 +3326,7 @@ function TodoPage({ reminders, onAdd, onToggle, onDelete }) {
                   borderLeft: !r.done && group === 'overdue' ? '3px solid #dc2626' : !r.done && group === 'undated' ? '3px solid #94a3b8' : !r.done ? '3px solid #3b82f6' : 'none',
                 }}>
                   <button
-                    onClick={() => onToggle(r.id)}
+                    onClick={() => handleToggle(r)}
                     style={{
                       ...styles.checkbox,
                       ...(r.done ? styles.checkboxChecked : {}),
@@ -3314,7 +3351,7 @@ function TodoPage({ reminders, onAdd, onToggle, onDelete }) {
                       {new Date(r.due + 'T00:00:00').toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' })}
                     </div>
                   )}
-                  <button onClick={() => onDelete(r.id)} style={{...styles.iconBtn, color:'#94a3b8', flexShrink:0}}><Trash2 size={13}/></button>
+                  <button onClick={() => handleDelete(r)} style={{...styles.iconBtn, color:'#94a3b8', flexShrink:0}}><Trash2 size={13}/></button>
                 </div>
               </React.Fragment>
             );
