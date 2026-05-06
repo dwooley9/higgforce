@@ -602,7 +602,7 @@ export default function CRM() {
     
     if (call.accountId) {
       setAccounts(prev => prev.map(x => x.id === call.accountId
-        ? addActivity(x, 'call', `Call logged: ${call.callType ? call.callType + ' — ' : ''}${call.outcome}${call.notes ? ' — ' + call.notes : ''}`)
+        ? addActivity(x, 'call', `Call logged: ${call.callType ? call.callType + ' — ' : ''}${call.outcome}${call.notes ? '\nNotes: ' + call.notes : ''}`)
         : x));
     }
   };
@@ -859,6 +859,9 @@ export default function CRM() {
           onTogglePin={togglePin}
           onLogCall={logCall}
           onAddReminder={addReminder}
+          reminders={reminders}
+          onToggleReminder={toggleReminder}
+          onDeleteReminder={deleteReminder}
           onLogEmailDraft={logEmailDraft}
           onUpdateStage={(stage) => saveAccount({ ...accounts.find(p=>p.id===selected), stage })}
           onUpdateTemp={(temp) => saveAccount({ ...accounts.find(p=>p.id===selected), temp })}
@@ -2449,7 +2452,7 @@ function AccountCard({ account, onClick, onTogglePin, taskButton }) {
 }
 
 /* ========== PROSPECT DETAIL DRAWER ========== */
-function AccountDetail({ account, onClose, onEdit, onDelete, onTogglePin, onLogCall, onAddReminder, onLogEmailDraft, onUpdateStage, onUpdateTemp, onSaveAccount }) {
+function AccountDetail({ account, onClose, onEdit, onDelete, onTogglePin, onLogCall, onAddReminder, reminders = [], onToggleReminder, onDeleteReminder, onLogEmailDraft, onUpdateStage, onUpdateTemp, onSaveAccount }) {
   if (!account) return null;
   const t = TEMPS[account.temp];
   const [tab, setTab] = useState('overview');
@@ -2589,7 +2592,7 @@ function AccountDetail({ account, onClose, onEdit, onDelete, onTogglePin, onLogC
 
         {!editMode && (
           <div className="tab-bar" style={styles.tabBar}>
-            {['overview', 'history', 'email', 'log call', 'remind'].map(tk => (
+            {['overview', 'history', 'email', 'log call', 'tasks'].map(tk => (
               <button key={tk} onClick={() => setTab(tk)}
                 style={{...styles.tab, ...(tab===tk ? styles.tabActive : {})}}>{tk}</button>
             ))}
@@ -2754,10 +2757,10 @@ function AccountDetail({ account, onClose, onEdit, onDelete, onTogglePin, onLogC
             </div>
           )}
 
-          {!editMode && tab === 'remind' && (
+          {!editMode && tab === 'tasks' && (
             <div style={{display:'flex',flexDirection:'column',gap:12}}>
               <div style={{fontSize:12, color:'#64748b', marginBottom:6, lineHeight:1.5}}>
-                Create a reminder that will appear in your Dashboard To-Do list. Tasks due within the next 30 days show automatically — great for scheduling follow-ups ahead of meetings or close dates.
+                Create a task that will appear in your Dashboard To-Do list. Tasks due within the next 30 days show automatically — great for scheduling follow-ups ahead of meetings or close dates.
               </div>
               <div>
                 <label style={styles.fieldLabel}>Task Description</label>
@@ -2771,6 +2774,54 @@ function AccountDetail({ account, onClose, onEdit, onDelete, onTogglePin, onLogC
               <div style={{fontSize:11, color:'#94a3b8', marginTop:4}}>
                 Tip: Tasks with a future date appear on the Dashboard up to 30 days in advance. Tasks with no date always show.
               </div>
+
+              {(() => {
+                const accountTasks = reminders
+                  .filter(r => r.accountId === account.id)
+                  .slice()
+                  .sort((a, b) => {
+                    if (!a.due && !b.due) return (b.createdAt || 0) - (a.createdAt || 0);
+                    if (!a.due) return -1;
+                    if (!b.due) return 1;
+                    return a.due.localeCompare(b.due);
+                  });
+                return (
+                  <div style={{marginTop:18, paddingTop:18, borderTop:'1px solid #e2e8f0'}}>
+                    <div style={{fontSize:13, fontWeight:600, color:'#0f172a', marginBottom:10, display:'flex', alignItems:'center', gap:6}}>
+                      <Clock size={13} style={{color:BRAND.teal}}/>
+                      Upcoming Tasks
+                      <span style={{fontSize:11, fontWeight:600, color:'#64748b', background:'#f1f5f9', padding:'2px 8px', borderRadius:10}}>{accountTasks.length}</span>
+                    </div>
+                    {accountTasks.length === 0 ? (
+                      <div style={{...styles.empty, padding:'14px'}}>No upcoming tasks for this account yet.</div>
+                    ) : (
+                      <div style={styles.remindersList}>
+                        {accountTasks.map(r => (
+                          <div key={r.id} style={styles.reminder}>
+                            <input
+                              type="checkbox"
+                              checked={!!r.done}
+                              onChange={() => onToggleReminder && onToggleReminder(r.id)}
+                              style={{cursor:'pointer'}}
+                            />
+                            <div style={{flex:1, minWidth:0}}>
+                              <div style={{fontSize:13, color:'#0f172a'}}>{r.text}</div>
+                              {r.due && <div style={{fontSize:11, color:'#64748b', marginTop:2}}>Due {r.due}</div>}
+                            </div>
+                            <button
+                              onClick={() => onDeleteReminder && onDeleteReminder(r.id)}
+                              style={{...styles.iconBtn, color:'#94a3b8'}}
+                              title="Delete task"
+                            >
+                              <Trash2 size={13}/>
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
           )}
         </div>
@@ -2818,7 +2869,7 @@ function ActivityTimeline({ activity }) {
               <Icon size={12}/>
             </div>
             <div style={{flex:1,minWidth:0,paddingTop:3}}>
-              <div style={{fontSize:13,color:'#0f172a',lineHeight:1.4}}>{a.text}</div>
+              <div style={{fontSize:13,color:'#0f172a',lineHeight:1.4,whiteSpace:'pre-wrap'}}>{a.text}</div>
               <div style={{fontSize:11,color:'#94a3b8',marginTop:3}}>{new Date(a.at).toLocaleString()}</div>
             </div>
           </div>
