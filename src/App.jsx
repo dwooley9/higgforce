@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { LayoutDashboard, Users, Phone, Send, Plus, X, Edit2, Trash2, Sparkles, Copy, Check, CheckSquare, MessageSquare, Search, Calendar, Building2, Mail, MapPin, User, ChevronDown, Loader2, AlertCircle, Pin, PinOff, Download, Clock, TrendingUp, FileText, ArrowRight, Globe, ExternalLink, Upload, Trophy, XCircle, Briefcase } from 'lucide-react';
+import { LayoutDashboard, Users, Phone, Send, Plus, X, Edit2, Trash2, Sparkles, Copy, Check, CheckSquare, MessageSquare, Search, Calendar, Building2, Mail, MapPin, User, ChevronDown, Loader2, AlertCircle, Pin, PinOff, Download, Clock, TrendingUp, FileText, ArrowRight, Globe, ExternalLink, Upload, Trophy, XCircle, Briefcase, StickyNote } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
 // localStorage shim — replaces window.storage for standalone web deployment.
@@ -271,6 +271,7 @@ export default function CRM() {
   const [reminders, setReminders] = useState([]);
   const [clientWork, setClientWork] = useState([]);
   const [prospectingTasks, setProspectingTasks] = useState([]);
+  const [notesToSelf, setNotesToSelf] = useState([]);
   const [loaded, setLoaded] = useState(false);
   const [selected, setSelected] = useState(null);
   const [editing, setEditing] = useState(null);
@@ -324,6 +325,7 @@ export default function CRM() {
         try { const r = await window.storage.get('reminders'); if (r && r.value) setReminders(JSON.parse(r.value)); } catch {}
         try { const cw = await window.storage.get('clientWork'); if (cw && cw.value) setClientWork(JSON.parse(cw.value)); } catch {}
         try { const pt = await window.storage.get('prospectingTasks'); if (pt && pt.value) setProspectingTasks(JSON.parse(pt.value)); } catch {}
+        try { const n = await window.storage.get('notesToSelf'); if (n && n.value) setNotesToSelf(JSON.parse(n.value)); } catch {}
       } catch (e) {
         diag.loadError = 'Top-level: ' + (e?.message || e);
       }
@@ -338,6 +340,7 @@ export default function CRM() {
   useEffect(() => { if (loaded && savesEnabled) window.storage.set('reminders', JSON.stringify(reminders)).catch(()=>{}); }, [reminders, loaded, savesEnabled]);
   useEffect(() => { if (loaded && savesEnabled) window.storage.set('clientWork', JSON.stringify(clientWork)).catch(()=>{}); }, [clientWork, loaded, savesEnabled]);
   useEffect(() => { if (loaded && savesEnabled) window.storage.set('prospectingTasks', JSON.stringify(prospectingTasks)).catch(()=>{}); }, [prospectingTasks, loaded, savesEnabled]);
+  useEffect(() => { if (loaded && savesEnabled) window.storage.set('notesToSelf', JSON.stringify(notesToSelf)).catch(()=>{}); }, [notesToSelf, loaded, savesEnabled]);
 
   // Wipe everything — local state + storage
   const clearAllData = async () => {
@@ -345,10 +348,14 @@ export default function CRM() {
     setCalls([]);
     setReminders([]);
     setClientWork([]);
+    setProspectingTasks([]);
+    setNotesToSelf([]);
     try { await window.storage.set('prospects', JSON.stringify([])); } catch {}
     try { await window.storage.set('calls', JSON.stringify([])); } catch {}
     try { await window.storage.set('reminders', JSON.stringify([])); } catch {}
     try { await window.storage.set('clientWork', JSON.stringify([])); } catch {}
+    try { await window.storage.set('prospectingTasks', JSON.stringify([])); } catch {}
+    try { await window.storage.set('notesToSelf', JSON.stringify([])); } catch {}
     setSavesEnabled(true);
   };
 
@@ -364,7 +371,8 @@ export default function CRM() {
       calls: calls,
       reminders: reminders,
       clientWork: clientWork,
-      prospectingTasks: prospectingTasks
+      prospectingTasks: prospectingTasks,
+      notesToSelf: notesToSelf
     };
     const json = JSON.stringify(backup, null, 2);
 
@@ -428,6 +436,7 @@ export default function CRM() {
       if (Array.isArray(data.reminders)) setReminders(data.reminders);
       if (Array.isArray(data.clientWork)) setClientWork(data.clientWork);
       if (Array.isArray(data.prospectingTasks)) setProspectingTasks(data.prospectingTasks);
+      if (Array.isArray(data.notesToSelf)) setNotesToSelf(data.notesToSelf);
     } else if (mode === 'merge') {
       if (Array.isArray(data.prospects)) {
         const existingNorm = new Set(accounts.map(p => normalizeCompany(p.company)));
@@ -438,6 +447,7 @@ export default function CRM() {
       if (Array.isArray(data.reminders)) setReminders([...data.reminders, ...reminders]);
       if (Array.isArray(data.clientWork)) setClientWork([...data.clientWork, ...clientWork]);
       if (Array.isArray(data.prospectingTasks)) setProspectingTasks([...data.prospectingTasks, ...prospectingTasks]);
+      if (Array.isArray(data.notesToSelf)) setNotesToSelf([...data.notesToSelf, ...notesToSelf]);
     }
     setSavesEnabled(true);
   };
@@ -626,6 +636,14 @@ export default function CRM() {
   const toggleProspectingTask = (id) => setProspectingTasks(prospectingTasks.map(t => t.id === id ? { ...t, done: !t.done } : t));
   const deleteProspectingTask = (id) => setProspectingTasks(prospectingTasks.filter(t => t.id !== id));
 
+  // Notes to Self — simple text notes, no completion state
+  const addNoteToSelf = (text) => {
+    const v = (text || '').trim();
+    if (!v) return;
+    setNotesToSelf([{ id: uid(), text: v, createdAt: Date.now() }, ...notesToSelf]);
+  };
+  const deleteNoteToSelf = (id) => setNotesToSelf(notesToSelf.filter(n => n.id !== id));
+
   // Dashboard = warm + pinned. Prospects page = everything.
   // Dashboard shows active pipeline (excludes Won/Lost)
   // Active pipeline = in one of the 6 pipeline stages (excludes Cold Prospect, Won, Lost)
@@ -755,6 +773,9 @@ export default function CRM() {
             onDeleteReminder={deleteReminder}
             onToggleProspectingTask={toggleProspectingTask}
             onDeleteProspectingTask={deleteProspectingTask}
+            notesToSelf={notesToSelf}
+            onAddNoteToSelf={addNoteToSelf}
+            onDeleteNoteToSelf={deleteNoteToSelf}
             onAddClientWork={addClientWork}
             onUpdateClientWork={updateClientWork}
             onDeleteClientWork={deleteClientWork}
@@ -1015,7 +1036,7 @@ function NavBtn({ icon: Icon, label, active, onClick, count, highlight }) {
 }
 
 /* ========== DASHBOARD (KANBAN PIPELINE) ========== */
-function Dashboard({ accounts, allAccounts, reminders, prospectingTasks = [], clientWork, onSelect, onNew, onImport, onAddReminder, onToggleReminder, onDeleteReminder, onToggleProspectingTask, onDeleteProspectingTask, onAddClientWork, onUpdateClientWork, onDeleteClientWork, onAssistantAction, onUpdateStage, onMarkRenewal }) {
+function Dashboard({ accounts, allAccounts, reminders, prospectingTasks = [], clientWork, onSelect, onNew, onImport, onAddReminder, onToggleReminder, onDeleteReminder, onToggleProspectingTask, onDeleteProspectingTask, notesToSelf = [], onAddNoteToSelf, onDeleteNoteToSelf, onAddClientWork, onUpdateClientWork, onDeleteClientWork, onAssistantAction, onUpdateStage, onMarkRenewal }) {
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
 
   // Filter open tasks (reminders + prospecting): show undated and anything due within the next 30 days
@@ -1058,6 +1079,14 @@ function Dashboard({ accounts, allAccounts, reminders, prospectingTasks = [], cl
   
   const [todoText, setTodoText] = useState('');
   const [todoDue, setTodoDue] = useState('');
+  const [noteText, setNoteText] = useState('');
+
+  const addNote = () => {
+    const v = noteText.trim();
+    if (!v) return;
+    onAddNoteToSelf(v);
+    setNoteText('');
+  };
 
   const addTodo = () => {
     const v = todoText.trim();
@@ -1254,6 +1283,39 @@ function Dashboard({ accounts, allAccounts, reminders, prospectingTasks = [], cl
             );
           })}
         </div>
+      </section>
+
+      {/* Note to Self */}
+      <section style={{marginTop:32}}>
+        <h2 style={styles.h2}><StickyNote size={15} style={{color:BRAND.teal}}/>Note to Self <span style={styles.h2Count}>{notesToSelf.length}</span></h2>
+
+        <div style={{display:'flex',gap:8,marginBottom:10,flexWrap:'wrap'}}>
+          <input
+            value={noteText}
+            onChange={e => setNoteText(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') addNote(); }}
+            placeholder="Jot a quick note to yourself…"
+            style={{...styles.input, flex:'1 1 280px'}}
+          />
+          <button onClick={addNote} disabled={!noteText.trim()} style={{...styles.btnPrimary, opacity: noteText.trim() ? 1 : 0.5}}>
+            <Plus size={14}/>Add
+          </button>
+        </div>
+
+        {notesToSelf.length === 0 ? (
+          <div style={{...styles.empty, padding:'20px'}}>No notes yet. Add a quick reminder above — these are deleted permanently when removed.</div>
+        ) : (
+          <div style={{...styles.remindersList, maxHeight:220, overflowY:'auto', paddingRight:4}}>
+            {notesToSelf.map(n => (
+              <div key={n.id} style={styles.reminder}>
+                <div style={{flex:1}}>
+                  <div style={{fontWeight:500,color:'#0f172a'}}>{n.text}</div>
+                </div>
+                <button onClick={() => onDeleteNoteToSelf(n.id)} style={styles.iconBtn} title="Delete permanently"><X size={14}/></button>
+              </div>
+            ))}
+          </div>
+        )}
       </section>
     </div>
   );
