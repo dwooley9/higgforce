@@ -609,6 +609,12 @@ export default function CRM() {
   const toggleCallLogged = (id) => setCalls(prev => prev.map(c => c.id === id ? { ...c, loggedToSF: !c.loggedToSF } : c));
   const deleteCall = (id) => setCalls(prev => prev.filter(c => c.id !== id));
 
+  const deleteActivity = (accountId, activityId) => {
+    setAccounts(prev => prev.map(x => x.id === accountId
+      ? { ...x, activity: (x.activity || []).filter(a => a.id !== activityId) }
+      : x));
+  };
+
   const logEmailDraft = (accountId, angle) => {
     setAccounts(prev => prev.map(x => x.id === accountId ? addActivity(x, 'email', `Email drafted: ${angle}`) : x));
   };
@@ -866,6 +872,7 @@ export default function CRM() {
           onUpdateStage={(stage) => saveAccount({ ...accounts.find(p=>p.id===selected), stage })}
           onUpdateTemp={(temp) => saveAccount({ ...accounts.find(p=>p.id===selected), temp })}
           onSaveAccount={saveAccount}
+          onDeleteActivity={deleteActivity}
         />
       )}
 
@@ -2452,7 +2459,7 @@ function AccountCard({ account, onClick, onTogglePin, taskButton }) {
 }
 
 /* ========== PROSPECT DETAIL DRAWER ========== */
-function AccountDetail({ account, onClose, onEdit, onDelete, onTogglePin, onLogCall, onAddReminder, reminders = [], onToggleReminder, onDeleteReminder, onLogEmailDraft, onUpdateStage, onUpdateTemp, onSaveAccount }) {
+function AccountDetail({ account, onClose, onEdit, onDelete, onTogglePin, onLogCall, onAddReminder, reminders = [], onToggleReminder, onDeleteReminder, onLogEmailDraft, onUpdateStage, onUpdateTemp, onSaveAccount, onDeleteActivity }) {
   if (!account) return null;
   const t = TEMPS[account.temp];
   const [tab, setTab] = useState('overview');
@@ -2699,7 +2706,7 @@ function AccountDetail({ account, onClose, onEdit, onDelete, onTogglePin, onLogC
             </div>
           )}
 
-          {!editMode && tab === 'history' && <ActivityTimeline activity={account.activity || []} />}
+          {!editMode && tab === 'history' && <ActivityTimeline activity={account.activity || []} onDelete={(activityId) => onDeleteActivity && onDeleteActivity(account.id, activityId)} />}
 
           {!editMode && tab === 'email' && <EmailDrafter account={account} onLogDraft={(angle) => onLogEmailDraft(account.id, angle)} />}
 
@@ -2838,7 +2845,7 @@ function AccountDetail({ account, onClose, onEdit, onDelete, onTogglePin, onLogC
   );
 }
 
-function ActivityTimeline({ activity }) {
+function ActivityTimeline({ activity, onDelete }) {
   if (!activity || activity.length === 0) {
     return <div style={styles.empty}>No activity yet. Logged calls, email drafts, stage changes, and reminders will appear here.</div>;
   }
@@ -2858,6 +2865,12 @@ function ActivityTimeline({ activity }) {
     if (type === 'temp') return '#f59e0b';
     return '#64748b';
   };
+  const handleDelete = (a) => {
+    if (!onDelete) return;
+    if (window.confirm('Delete this call from the account history? This cannot be undone.')) {
+      onDelete(a.id);
+    }
+  };
   return (
     <div style={{display:'flex',flexDirection:'column',gap:0,position:'relative'}}>
       {activity.map((a, i) => {
@@ -2872,6 +2885,15 @@ function ActivityTimeline({ activity }) {
               <div style={{fontSize:13,color:'#0f172a',lineHeight:1.4,whiteSpace:'pre-wrap'}}>{a.text}</div>
               <div style={{fontSize:11,color:'#94a3b8',marginTop:3}}>{new Date(a.at).toLocaleString()}</div>
             </div>
+            {a.type === 'call' && onDelete && (
+              <button
+                onClick={() => handleDelete(a)}
+                title="Delete call"
+                style={{background:'transparent',border:'none',padding:4,color:'#94a3b8',cursor:'pointer',alignSelf:'flex-start',display:'flex',alignItems:'center',justifyContent:'center',borderRadius:4}}
+              >
+                <Trash2 size={13}/>
+              </button>
+            )}
           </div>
         );
       })}
