@@ -53,7 +53,7 @@ const STAGE_SUBTITLE = Object.fromEntries([...PRE_PIPELINE_STAGES, ...PIPELINE_S
 // Client management workflow stages (separate from prospect pipeline)
 const CLIENT_MGMT_STAGES = ['Additional Quote', 'Policy Changes', 'Inspection Recs', 'Audit'];
 
-const INDUSTRIES = ['Auto / Tire / Service', 'Church / Religious Org', 'Contractor / Construction', 'Landscaping / Outdoor', 'Manufacturing', 'Non-Profit / Associations', 'Personal Care', 'Professional Services', 'Property Maintenance', 'Real Estate', 'Restaurant / Hospitality', 'Retail', 'Roofing', 'Service Business', 'Other', 'Personal Lines'];
+const INDUSTRIES = ['Auto / Tire / Service', 'Church / Religious Org', 'Contractor / Construction', 'Dealership', 'Landscaping / Outdoor', 'Manufacturing', 'Non-Profit / Associations', 'Personal Care', 'Professional Services', 'Property Maintenance', 'Real Estate', 'Restaurant / Hospitality', 'Retail', 'Roofing', 'Service Business', 'Other', 'Personal Lines'];
 const COMMERCIAL_INDUSTRIES = INDUSTRIES.filter(i => i !== 'Personal Lines');
 const IndustryOptions = () => (
   <>
@@ -3635,7 +3635,7 @@ function CallSection({ title, calls, onToggle, onDelete, emptyText, warning, mut
 
 /* ========== PROSPECT FORM ========== */
 function AccountForm({ initial, onSave, onClose }) {
-  const [p, setP] = useState(initial || { company:'', contact:'', phone:'', email:'', address:'', website:'', renewal:'', industry:'Other', temp:'neutral', stage:'Prospecting', notes:'' });
+  const [p, setP] = useState(initial || { company:'', contact:'', phone:'', email:'', address:'', website:'', renewal:'', industry:'Other', temp:'neutral', stage:'Cold Prospect', notes:'' });
   const upd = (k, v) => setP({ ...p, [k]: v });
 
   const submit = () => {
@@ -3795,7 +3795,7 @@ function ImportModal({ onImport, onClose }) {
 
     const dataRows = rows.slice(1);
     const results = dataRows.map(row => {
-      const obj = { company:'', contact:'', phone:'', email:'', address:'', website:'', renewal:'', industry:defaultIndustry, temp:defaultTemp, stage:'Prospecting', notes:'' };
+      const obj = { company:'', contact:'', phone:'', email:'', address:'', website:'', renewal:'', industry:defaultIndustry, temp:defaultTemp, stage:'Cold Prospect', notes:'' };
       mapped.forEach((field, i) => {
         if (!field) return;
         const val = (row[i] || '').trim();
@@ -3821,7 +3821,7 @@ function ImportModal({ onImport, onClose }) {
     // "Company Name, 254-555-1234, email@co.com"
     const lines = text.split(/\n+/).map(l => l.trim()).filter(Boolean);
     const results = lines.map(line => {
-      const obj = { company:'', contact:'', phone:'', email:'', address:'', website:'', renewal:'', industry:defaultIndustry, temp:defaultTemp, stage:'Prospecting', notes:'' };
+      const obj = { company:'', contact:'', phone:'', email:'', address:'', website:'', renewal:'', industry:defaultIndustry, temp:defaultTemp, stage:'Cold Prospect', notes:'' };
 
       // Extract phone (loose pattern)
       const phoneMatch = line.match(/(\+?1?[\s.\-]?\(?\d{3}\)?[\s.\-]?\d{3}[\s.\-]?\d{4})/);
